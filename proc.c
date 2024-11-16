@@ -346,6 +346,10 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 
+      // Adding extra condition for core_id
+      if(p->core_id != cpuid())
+        continue;
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -541,4 +545,52 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+
+void
+load_balancer(void)
+{
+    acquire(&ptable.lock);
+    int process_count[NCPU] = {0};
+    struct proc *p;
+
+    // Count processes per core
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state == RUNNABLE || p->state == RUNNING){
+            if(p->core_id >= 0 && p->core_id < NCPU){
+                process_count[p->core_id]++;
+            }
+        }
+    }
+
+    // Calculate average
+    int total = 0;
+    for(int i = 0; i < NCPU; i++)
+        total += process_count[i];
+    int average = total / NCPU;
+
+    // Find overloaded and underloaded cores
+    int overloaded = -1, underloaded = -1;
+    for(int i = 0; i < NCPU; i++){
+        if(process_count[i] > average + 1){
+            overloaded = i;
+        }
+        if(process_count[i] < average - 1){
+            underloaded = i;
+        }
+    }
+
+    // Migrate one process if imbalance exists
+    if(overloaded != -1 && underloaded != -1){
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+            if(p->state == RUNNABLE && p->core_id == overloaded){
+                p->core_id = underloaded;
+                cprintf("Load Balancer: Migrated Process %d to Core %d\n", p->pid, underloaded);
+                break; // Migrate only one process per balance operation
+            }
+        }
+    }
+
+    release(&ptable.lock);
 }
