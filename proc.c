@@ -20,6 +20,10 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+// Adding new ** line
+int next_core = 0;          // Global variable to track next core for assignment
+struct spinlock core_assign_lock; // Spinlock to protect `next_core`
+
 void
 pinit(void)
 {
@@ -111,6 +115,12 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
+  // **Assign core_id to initprocess**
+  acquire(&core_assign_lock);
+  p->core_id = next_core;
+  next_core = (next_core + 1) % ncpu;
+  release(&core_assign_lock);
 
   return p;
 }
