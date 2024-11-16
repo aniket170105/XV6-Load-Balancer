@@ -24,11 +24,15 @@ static void wakeup1(void *chan);
 int next_core = 0;          // Global variable to track next core for assignment
 struct spinlock core_assign_lock; // Spinlock to protect `next_core`
 
+// static int lb_running = 0;       // Flag to indicate if load balancer is running
+// struct spinlock lb_lock;         // Spinlock to protect lb_running
+
 void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
   initlock(&core_assign_lock, "core_assign_lock");
+  // initlock(&lb_lock, "lb_lock");  // Initialize load balancer lock
 }
 
 // Must be called with interrupts disabled
@@ -596,6 +600,6 @@ load_balancer(void)
             }
         }
     }
-
+    
     release(&ptable.lock);
 }

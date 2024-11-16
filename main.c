@@ -55,6 +55,7 @@ mpmain(void)
 
   struct cpu *c = mycpu();
   c->idle_ticks = 0;
+  c->lb_ticks_since_last = 0;
 
 
   idtinit();       // load idt register

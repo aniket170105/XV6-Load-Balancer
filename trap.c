@@ -8,6 +8,7 @@
 #include "traps.h"
 #include "spinlock.h"
 
+// #define LB_INTERVAL 1000;
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
@@ -54,6 +55,24 @@ trap(struct trapframe *tf)
       wakeup(&ticks);
       release(&tickslock);
     }
+
+    // **Load Balancer Integration Start**
+    {
+        struct cpu *c = mycpu();  // Retrieve current CPU structure
+        c->lb_ticks_since_last++; // Increment the load balancer tick counter
+
+        if(c->lb_ticks_since_last >= 1000){
+            c->lb_ticks_since_last = 0;  // Reset the counter
+            // **Ensure Only Core 0 Invokes the Load Balancer**
+            // So that no run case comes.
+            if(cpuid() == 0){
+              load_balancer();   // Invoke the load balancer
+            }
+        }
+    }
+    // **Load Balancer Integration End**
+
+
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:
