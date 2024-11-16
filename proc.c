@@ -28,6 +28,7 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  initlock(&core_assign_lock, "core_assign_lock");
 }
 
 // Must be called with interrupts disabled
@@ -365,6 +366,10 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
+
+    // Here it is pretty obvious that whenever scheduler is called and no process is found it means 
+    // that CPU is not executing anything i.e. it is idle
+    c->idle_ticks++;
 
   }
 }
