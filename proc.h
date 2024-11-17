@@ -9,10 +9,10 @@ struct cpu {
   int intena;                  // Were interrupts enabled before pushcli?
   struct proc *proc;           // The process running on this cpu or null
 
-  uint idle_ticks;           // Added **** new
+  long int idle_ticks;           // Added **** new
 
   // **New Fields for Load Balancer Invocation**
-    uint lb_ticks_since_last;    // Ticks since last load balancer invocation
+  uint lb_ticks_since_last;    // Ticks since last load balancer invocation
 
 };
 
