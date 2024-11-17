@@ -566,42 +566,41 @@ void procdump(void)
   }
 }
 
-void load_balancer(void)
-{
-  // Assume total time = 1e12
-  const long int total_time = 2147483647;
-  const double threshold_percentage = 0.2; // i.e. 20%
-  int total_execution_time = 0;
-  for (int i = 0; i < ncpu; ++i)
-  {
-    total_execution_time += (total_time - cpus[i].idle_ticks);
+// Changed the code to only consider idle_time
+// Like first calculate total idle time -> average idle time -> threshold on idle time -> check if any on verify it 
+void load_balancer(void){
+  const double threshold_percentage = 0.2;
+  int total_idle_time = 0;
+  for(int i=0; i<ncpu; i++){
+    total_idle_time += cpus[i].idle_ticks;
   }
 
-  double average_busy_time = total_execution_time / (double)ncpu;
-  double threshold = average_busy_time * threshold_percentage; // Threshold = 20% of avg
+  double average_idle_time = total_idle_time/(double)ncpu;
+  double threshold = average_idle_time*threshold_percentage;
 
   int overloaded = -1, underloaded = -1;
-  long int max_busy_time = -2147483648;
-  long int min_busy_time = 2147483647;
+  long int max_idle_time = -2147483648;
+  long int min_idle_time = 2147483647;
 
   for (int i=0; i<ncpu; i++){
-    int busy_time = total_time - cpus[i].idle_ticks; // Busy time
-    if (busy_time > max_busy_time){
-      max_busy_time = busy_time;
+    int idle_time = cpus[i].idle_ticks; // Busy time
+    if (idle_time < min_idle_time){
+      min_idle_time = idle_time;
       overloaded = i;
     }
-    if (busy_time < min_busy_time){
-      min_busy_time = busy_time;
+    if (idle_time > max_idle_time){
+      max_idle_time = idle_time;
       underloaded = i;
     }
   }
 
-  if (overloaded != -1 && underloaded != -1 && (max_busy_time - min_busy_time > threshold)){
+  if (overloaded != -1 && underloaded != -1 && (max_idle_time - min_idle_time > threshold)){
     acquire(&ptable.lock);
     for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if (p->state == RUNNABLE && p->core_id == overloaded){
         p->core_id = underloaded;
         cprintf("Load Balancer: Migrated Process %d to Core %d\n", p->pid, underloaded);
+        cprintf("Idle time of Core 0 : %d, Idle time of Core 1 : %d\n", cpus[0].idle_ticks, cpus[1].idle_ticks);
         break; // Migrate only one process per balance operation
       }
     }
@@ -609,6 +608,51 @@ void load_balancer(void)
   }
 
 }
+
+
+// void load_balancer(void)
+// {
+//   // Assume total time = 1e12
+//   const long int total_time = 2147483647;
+//   const double threshold_percentage = 0.2; // i.e. 20%
+//   int total_execution_time = 0;
+//   for (int i = 0; i < ncpu; ++i)
+//   {
+//     total_execution_time += (total_time - cpus[i].idle_ticks);
+//   }
+
+//   double average_busy_time = total_execution_time / (double)ncpu;
+//   double threshold = average_busy_time * threshold_percentage; // Threshold = 20% of avg
+
+//   int overloaded = -1, underloaded = -1;
+//   long int max_busy_time = -2147483648;
+//   long int min_busy_time = 2147483647;
+
+//   for (int i=0; i<ncpu; i++){
+//     int busy_time = total_time - cpus[i].idle_ticks; // Busy time
+//     if (busy_time > max_busy_time){
+//       max_busy_time = busy_time;
+//       overloaded = i;
+//     }
+//     if (busy_time < min_busy_time){
+//       min_busy_time = busy_time;
+//       underloaded = i;
+//     }
+//   }
+
+//   if (overloaded != -1 && underloaded != -1 && (max_busy_time - min_busy_time > threshold)){
+//     acquire(&ptable.lock);
+//     for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//       if (p->state == RUNNABLE && p->core_id == overloaded){
+//         p->core_id = underloaded;
+//         cprintf("Load Balancer: Migrated Process %d to Core %d\n", p->pid, underloaded);
+//         break; // Migrate only one process per balance operation
+//       }
+//     }
+//     release(&ptable.lock);
+//   }
+
+// }
 
 // void load_balancer(void)
 // {
